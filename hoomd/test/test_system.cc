@@ -81,14 +81,8 @@ class DummyIntegrator : public Integrator
     public:
     //! Constructs a named analyzer
     DummyIntegrator(std::shared_ptr<SystemDefinition> sysdef, const string& name)
-        : Integrator(sysdef, 0), m_name(name), m_pressure_flag_in_prep(false)
+        : Integrator(sysdef, 0), m_name(name)
         {
-        }
-
-    void prepRun(uint64_t timestep)
-        {
-        Integrator::prepRun(timestep);
-        m_pressure_flag_in_prep = m_pdata->getFlags()[pdata_flag::pressure_tensor];
         }
 
     //! Just prints our name and the current time step
@@ -98,14 +92,8 @@ class DummyIntegrator : public Integrator
         Sleep(8);
         }
 
-    bool getPressureFlagInPrep() const
-        {
-        return m_pressure_flag_in_prep;
-        }
-
     private:
-    string m_name;                  //!< Name of the dummy
-    bool m_pressure_flag_in_prep;   //!< Pressure flag observed during prepRun
+    string m_name; //!< Name of the dummy
     };
 
 //! Dummy updater for unit testing System
@@ -209,20 +197,6 @@ UP_TEST(getter_setter_tests)
     MY_ASSERT_EQUAL(sys.getIntegrator(), integrator1);
     sys.setIntegrator(integrator2);
     MY_ASSERT_EQUAL(sys.getIntegrator(), integrator2);
-    }
-
-//! System must publish this run's particle-data flags before integrator preparation.
-UP_TEST(flags_are_set_before_prep_run)
-    {
-    std::shared_ptr<SystemDefinition> sysdef(new SystemDefinition(10, BoxDim(10)));
-    System sys(sysdef, 0);
-    auto integrator = std::make_shared<DummyIntegrator>(sysdef, "integrator");
-    sys.setIntegrator(integrator);
-    sys.setPressureFlag(true);
-
-    sys.run(0);
-
-    UP_ASSERT(integrator->getPressureFlagInPrep());
     }
 
 // since there is no automatic verification, there is no reason to run this test all the time

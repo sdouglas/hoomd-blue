@@ -538,6 +538,45 @@ def test_velocity_constituents_constant_torque(
         assert np.allclose(expected_velocity, new_snapshot.particles.velocity)
 
 
+def test_rigid_resultant_refreshes_after_same_timestep_force_add(
+    simulation_factory,
+    one_particle_snapshot_factory,
+):
+    """Preparing a new run must aggregate newly attached constituent forces."""
+    initial_snapshot = one_particle_snapshot_factory(particle_types=["A", "B"])
+    if initial_snapshot.communicator.rank == 0:
+        initial_snapshot.particles.moment_inertia[:] = [(1, 1, 1)]
+
+    sim = simulation_factory(initial_snapshot)
+    rigid = md.constrain.Rigid()
+    rigid.body["A"] = {
+        "constituent_types": ["B"],
+        "positions": [(1, 0, 0)],
+        "orientations": [(1, 0, 0, 0)],
+    }
+    rigid.create_bodies(sim.state)
+
+    integrator = md.Integrator(
+        dt=0.005,
+        methods=[md.methods.ConstantVolume(filter=hoomd.filter.Rigid())],
+        rigid=rigid,
+        integrate_rotational_dof=True,
+    )
+    sim.operations.integrator = integrator
+    sim.run(1)
+
+    constant_force = md.force.Constant(filter=hoomd.filter.Type(["B"]))
+    constant_force.constant_force["B"] = (0, 1, 0)
+    integrator.forces.append(constant_force)
+    sim.run(0)
+
+    with sim.state.cpu_local_snapshot as local:
+        tags = np.asarray(local.particles.tag)
+        center_index = int(np.flatnonzero(tags == 0)[0])
+        center_torque = np.asarray(local.particles.net_torque)[center_index]
+    np.testing.assert_allclose(center_torque, (0, 0, 1), atol=1e-12)
+
+
 @pytest.mark.parametrize(
     "com_velocity",
     [(0, 0, 0), (1, 2, 3)],

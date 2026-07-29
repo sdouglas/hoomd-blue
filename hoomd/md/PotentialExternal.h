@@ -61,6 +61,9 @@ template<class evaluator> class PotentialExternal : public ForceCompute
     //! get a reference to the field parameters. Used to expose the field attributes to Python.
     std::shared_ptr<field_type>& getField();
 
+    //! Replace the field with a new empty allocation on the active device.
+    void resetField();
+
     protected:
     GPUArray<param_type> m_params;       //!< Array of per-type parameters
     std::shared_ptr<field_type> m_field; /// evaluator dependent field parameters
@@ -210,6 +213,13 @@ PotentialExternal<evaluator>::getField()
     return m_field;
     }
 
+template<class evaluator> void PotentialExternal<evaluator>::resetField()
+    {
+    m_field
+        = hoomd::detail::make_managed_shared<typename PotentialExternal<evaluator>::field_type>(
+            m_exec_conf->isCUDAEnabled());
+    }
+
 namespace detail
     {
 //! Export this external potential to python
@@ -228,7 +238,8 @@ template<class T> void export_PotentialExternal(pybind11::module& m, const std::
     // void* serves as a sentinel type indicating that no field_type actually exists.
     if constexpr (!std::is_same<typename T::field_type, void*>::value)
         {
-        cls.def_property("field", &PotentialExternal<T>::getField, &PotentialExternal<T>::setField);
+        cls.def_property("field", &PotentialExternal<T>::getField, &PotentialExternal<T>::setField)
+            .def("resetField", &PotentialExternal<T>::resetField);
         }
     }
     } // end namespace detail

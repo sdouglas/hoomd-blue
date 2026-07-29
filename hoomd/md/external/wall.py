@@ -162,8 +162,8 @@ def _to_md_cpp_wall(wall):
 
 
 class _WallArrayViewFactory:
-    def __init__(self, cpp_wall_potential, wall_type):
-        self.cpp_obj = cpp_wall_potential
+    def __init__(self, wall_field, wall_type):
+        self.wall_field = wall_field
         self.func_name = {
             hoomd.wall.Sphere: "get_sphere_list",
             hoomd.wall.Cylinder: "get_cylinder_list",
@@ -171,7 +171,21 @@ class _WallArrayViewFactory:
         }[wall_type]
 
     def __call__(self):
-        return getattr(self.cpp_obj.field, self.func_name)()
+        return getattr(self.wall_field, self.func_name)()
+
+
+def _wall_sync_lists(wall_field):
+    return {
+        hoomd.wall.Sphere: _ArrayViewWrapper(
+            _WallArrayViewFactory(wall_field, hoomd.wall.Sphere)
+        ),
+        hoomd.wall.Cylinder: _ArrayViewWrapper(
+            _WallArrayViewFactory(wall_field, hoomd.wall.Cylinder)
+        ),
+        hoomd.wall.Plane: _ArrayViewWrapper(
+            _WallArrayViewFactory(wall_field, hoomd.wall.Plane)
+        ),
+    }
 
 
 class WallPotential(force.Force):
@@ -219,19 +233,10 @@ class WallPotential(force.Force):
         else:
             cls = getattr(self._ext_module, self._cpp_class_name + "GPU")
         self._cpp_obj = cls(self._simulation.state._cpp_sys_def)
-        self._walls._sync(
-            {
-                hoomd.wall.Sphere: _ArrayViewWrapper(
-                    _WallArrayViewFactory(self._cpp_obj, hoomd.wall.Sphere)
-                ),
-                hoomd.wall.Cylinder: _ArrayViewWrapper(
-                    _WallArrayViewFactory(self._cpp_obj, hoomd.wall.Cylinder)
-                ),
-                hoomd.wall.Plane: _ArrayViewWrapper(
-                    _WallArrayViewFactory(self._cpp_obj, hoomd.wall.Plane)
-                ),
-            }
-        )
+        self._walls._sync(_wall_sync_lists(self._cpp_obj.field))
+
+    def _detach_hook(self):
+        self._walls._unsync()
 
     @property
     def walls(self):
@@ -244,21 +249,12 @@ class WallPotential(force.Force):
     def walls(self, wall_list):
         if self._walls is wall_list:
             return
-        self._walls = hoomd.wall._WallsMetaList(wall_list, _to_md_cpp_wall)
+        new_walls = hoomd.wall._WallsMetaList(wall_list, _to_md_cpp_wall)
         if self._attached:
-            self._walls._sync(
-                {
-                    hoomd.wall.Sphere: _ArrayViewWrapper(
-                        _WallArrayViewFactory(self._cpp_obj, hoomd.wall.Sphere)
-                    ),
-                    hoomd.wall.Cylinder: _ArrayViewWrapper(
-                        _WallArrayViewFactory(self._cpp_obj, hoomd.wall.Cylinder)
-                    ),
-                    hoomd.wall.Plane: _ArrayViewWrapper(
-                        _WallArrayViewFactory(self._cpp_obj, hoomd.wall.Plane)
-                    ),
-                }
-            )
+            self._walls._unsync()
+            self._cpp_obj.resetField()
+            new_walls._sync(_wall_sync_lists(self._cpp_obj.field))
+        self._walls = new_walls
 
 
 class LJ(WallPotential):

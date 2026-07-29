@@ -149,6 +149,28 @@ def test_attaching(simulation, cls, params):
         assert np.isclose(wall_pot.params["A"][attr], params[attr])
 
 
+def test_replace_attached_walls(simulation):
+    wall_pot = md.external.wall.Gaussian(
+        [hoomd.wall.Sphere(radius=5, inside=True)]
+    )
+    wall_pot.params["A"] = {
+        "epsilon": 1.0,
+        "sigma": 1.0,
+        "r_cut": 2.5,
+    }
+    simulation.operations.integrator.forces.append(wall_pot)
+    simulation.run(0)
+
+    wall_pot.walls = [
+        hoomd.wall.Plane(origin=(0, 0, -2), normal=(0, 0, 1)),
+        hoomd.wall.Plane(origin=(0, 0, 2), normal=(0, 0, -1)),
+    ]
+
+    assert wall_pot._cpp_obj.field.num_spheres == 0
+    assert wall_pot._cpp_obj.field.num_planes == 2
+    simulation.run(1)
+
+
 @pytest.mark.parametrize("cls, params", zip(_potential_cls, _params(2.5, 0.0)))
 def test_plane(simulation, cls, params):
     """Test that particles stay in box slice defined by two plane walls."""

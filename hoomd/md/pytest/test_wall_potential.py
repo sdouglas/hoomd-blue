@@ -168,7 +168,11 @@ def test_replace_attached_walls(simulation):
 
     assert wall_pot._cpp_obj.field.num_spheres == 0
     assert wall_pot._cpp_obj.field.num_planes == 2
-    simulation.run(1)
+    simulation.run(0)
+
+    # Replacing geometry at an unchanged timestep must invalidate the force
+    # computed with the previous wall field.
+    assert np.any(wall_pot.forces != 0)
 
 
 @pytest.mark.parametrize("cls, params", zip(_potential_cls, _params(2.5, 0.0)))

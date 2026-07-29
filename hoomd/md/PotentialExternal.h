@@ -218,6 +218,7 @@ template<class evaluator> void PotentialExternal<evaluator>::resetField()
     m_field
         = hoomd::detail::make_managed_shared<typename PotentialExternal<evaluator>::field_type>(
             m_exec_conf->isCUDAEnabled());
+    m_force_compute = true;
     }
 
 namespace detail

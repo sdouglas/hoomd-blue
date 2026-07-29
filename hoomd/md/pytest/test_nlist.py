@@ -217,10 +217,47 @@ def test_cell_properties(simulation_factory, lattice_snapshot_factory):
     assert nlist.allocated_particles_per_cell >= 1
 
 
+def test_allocation_telemetry(
+    nlist_params, simulation_factory, lattice_snapshot_factory
+):
+    """The origamisim extension reports live neighbor-list capacity."""
+    nlist_cls, required_args = nlist_params
+    nlist = nlist_cls(**required_args, buffer=0.4)
+    lj = hoomd.md.pair.LJ(nlist, default_r_cut=1.1)
+    for pair in (("A", "A"), ("A", "B"), ("B", "B")):
+        lj.params[pair] = dict(epsilon=1, sigma=1)
+
+    integrator = hoomd.md.Integrator(
+        0.005,
+        forces=[lj],
+        methods=[hoomd.md.methods.Langevin(hoomd.filter.All(), kT=1)],
+    )
+    sim = simulation_factory(lattice_snapshot_factory(n=10))
+    sim.operations.integrator = integrator
+    sim.run(1)
+
+    assert len(nlist.allocated_nmax) == len(sim.state.particle_types)
+    assert all(value > 0 for value in nlist.allocated_nmax)
+    assert nlist.allocated_nlist_elements > 0
+    assert nlist.allocated_nlist_bytes == 4 * nlist.allocated_nlist_elements
+
+
 def test_logging():
     base_loggables = {
         "shortest_rebuild": {"category": LoggerCategories.scalar, "default": True},
         "num_builds": {"category": LoggerCategories.scalar, "default": False},
+        "allocated_nmax": {
+            "category": LoggerCategories.sequence,
+            "default": False,
+        },
+        "allocated_nlist_elements": {
+            "category": LoggerCategories.scalar,
+            "default": False,
+        },
+        "allocated_nlist_bytes": {
+            "category": LoggerCategories.scalar,
+            "default": False,
+        },
     }
     logging_check(hoomd.md.nlist.NeighborList, ("md", "nlist"), base_loggables)
 

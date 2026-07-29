@@ -24,6 +24,7 @@
 #else
 #include <cub/warp/warp_reduce.cuh>
 #include <cub/warp/warp_scan.cuh>
+#include <cuda/std/functional>
 #include <cuda/std/type_traits>
 #endif
 

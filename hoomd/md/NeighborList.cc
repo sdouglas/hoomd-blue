@@ -8,7 +8,9 @@
 #include "NeighborList.h"
 #include "hoomd/BondedGroupData.h"
 
+#include <algorithm>
 #include <iostream>
+#include <pybind11/stl.h>
 #include <stdexcept>
 
 using namespace std;
@@ -1577,6 +1579,14 @@ void NeighborList::resetConditions()
     m_conditions.zeroFill();
     }
 
+std::vector<unsigned int> NeighborList::getAllocatedNmax()
+    {
+    std::vector<unsigned int> result(m_pdata->getNTypes());
+    ArrayHandle<unsigned int> h_Nmax(m_Nmax, access_location::host, access_mode::read);
+    std::copy(h_Nmax.data, h_Nmax.data + result.size(), result.begin());
+    return result;
+    }
+
 void NeighborList::growExclusionList()
     {
     unsigned int new_height = m_ex_list_indexer.getH() + 1;
@@ -1885,6 +1895,11 @@ void export_NeighborList(pybind11::module& m)
         .def("getNumUpdates", &NeighborList::getNumUpdates)
         .def("getNumExclusions", &NeighborList::getNumExclusions)
         .def_property_readonly("num_builds", &NeighborList::getNumUpdates)
+        .def_property_readonly("allocated_nmax", &NeighborList::getAllocatedNmax)
+        .def_property_readonly("allocated_nlist_elements",
+                               &NeighborList::getAllocatedNlistElements)
+        .def_property_readonly("allocated_nlist_bytes",
+                               &NeighborList::getAllocatedNlistBytes)
         .def("getLocalPairList", &NeighborList::getLocalPairListPython)
         .def("getPairList", &NeighborList::getPairListPython)
         .def("setRCut", &NeighborList::setRCutPython)

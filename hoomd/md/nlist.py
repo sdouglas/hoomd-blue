@@ -432,6 +432,25 @@ class NeighborList(Compute):
         """
         return self._cpp_obj.num_builds
 
+    @log(requires_run=True, default=False, category="sequence")
+    def allocated_nmax(self):
+        """tuple[int]: Allocated neighbor capacity for each particle type.
+
+        This origamisim telemetry extension exposes the per-type capacities
+        used to size the flat neighbor array after overflow-driven growth.
+        """
+        return tuple(self._cpp_obj.allocated_nmax)
+
+    @log(requires_run=True, default=False)
+    def allocated_nlist_elements(self):
+        """int: Allocated entries in the flat neighbor array."""
+        return self._cpp_obj.allocated_nlist_elements
+
+    @log(requires_run=True, default=False)
+    def allocated_nlist_bytes(self):
+        """int: Allocated bytes in the flat neighbor array."""
+        return self._cpp_obj.allocated_nlist_bytes
+
 
 class Cell(NeighborList):
     r"""Neighbor list computed via a cell list.

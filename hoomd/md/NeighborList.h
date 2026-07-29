@@ -288,6 +288,21 @@ class PYBIND11_EXPORT NeighborList : public Compute
     //! Gets the shortest rebuild period this nlist has experienced since a call to resetStats
     unsigned int getSmallestRebuild();
 
+    //! Get the allocated neighbor capacity for each particle type
+    std::vector<unsigned int> getAllocatedNmax();
+
+    //! Get the number of allocated entries in the flat neighbor array
+    size_t getAllocatedNlistElements()
+        {
+        return m_nlist.getNumElements();
+        }
+
+    //! Get the allocated size of the flat neighbor array in bytes
+    size_t getAllocatedNlistBytes()
+        {
+        return m_nlist.getNumElements() * sizeof(unsigned int);
+        }
+
     // @}
     //! \name Get data
     // @{

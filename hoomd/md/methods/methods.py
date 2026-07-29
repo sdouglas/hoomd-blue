@@ -748,6 +748,9 @@ class Langevin(Method):
             coefficient tensor for all particles :math:`[\mathrm{mass} \cdot
             \mathrm{length}^{2} \cdot \mathrm{time}^{-1}]`.
 
+        legacy_rng (bool): When True, use the HOOMD 2.9.7 Langevin seed hash,
+            Philox key, and counter word layout. Defaults to False.
+
     `Langevin` integrates particles forward in time according to the
     Langevin equations of motion, modelling a canonical ensemble (NVT).
 
@@ -839,6 +842,9 @@ class Langevin(Method):
 
                 langevin.tally_reservoir_energy = True
 
+        legacy_rng (bool): Whether to use the opt-in HOOMD 2.9.7 Langevin
+            random-number stream.
+
         gamma (TypeParameter[ ``particle type``, `float` ]): The drag
             coefficient for each particle type
             :math:`[\mathrm{mass} \cdot \mathrm{time}^{-1}]`.
@@ -872,12 +878,14 @@ class Langevin(Method):
         tally_reservoir_energy=False,
         default_gamma=1.0,
         default_gamma_r=(1.0, 1.0, 1.0),
+        legacy_rng=False,
     ):
         # store metadata
         param_dict = ParameterDict(
             filter=ParticleFilter,
             kT=Variant,
             tally_reservoir_energy=bool(tally_reservoir_energy),
+            legacy_rng=bool(legacy_rng),
         )
         param_dict.update(dict(kT=kT, filter=filter))
         # set defaults

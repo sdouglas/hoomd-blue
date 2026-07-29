@@ -250,6 +250,7 @@ void TwoStepLangevin::integrateStepTwo(uint64_t timestep)
     // a(t+deltaT) gets modified with the bd forces
     // v(t+deltaT) = v(t+deltaT/2) + 1/2 * a(t+deltaT)*deltaT
     uint16_t seed = m_sysdef->getSeed();
+    uint32_t legacy_seed = LegacyRandomGenerator::hashUserSeed(seed);
 
     for (unsigned int group_idx = 0; group_idx < group_size; group_idx++)
         {
@@ -259,13 +260,17 @@ void TwoStepLangevin::integrateStepTwo(uint64_t timestep)
         // Initialize the RNG
         RandomGenerator rng(hoomd::Seed(RNGIdentifier::TwoStepLangevin, timestep, seed),
                             hoomd::Counter(ptag));
+        LegacyRandomGenerator legacy_generator(LegacyRNGIdentifier::TwoStepLangevin,
+                                               legacy_seed,
+                                               ptag,
+                                               timestep);
 
         // first, calculate the BD forces
         // Generate three random numbers
         hoomd::UniformDistribution<Scalar> uniform(Scalar(-1), Scalar(1));
-        Scalar rx = uniform(rng);
-        Scalar ry = uniform(rng);
-        Scalar rz = uniform(rng);
+        Scalar rx = m_legacy_rng ? uniform(legacy_generator) : uniform(rng);
+        Scalar ry = m_legacy_rng ? uniform(legacy_generator) : uniform(rng);
+        Scalar rz = m_legacy_rng ? uniform(legacy_generator) : uniform(rng);
 
         Scalar gamma;
         unsigned int type = __scalar_as_int(h_pos.data[j].w);
@@ -334,9 +339,15 @@ void TwoStepLangevin::integrateStepTwo(uint64_t timestep)
                 if (m_noiseless_r)
                     sigma_r = make_scalar3(0.0, 0.0, 0.0);
 
-                Scalar rand_x = hoomd::NormalDistribution<Scalar>(sigma_r.x)(rng);
-                Scalar rand_y = hoomd::NormalDistribution<Scalar>(sigma_r.y)(rng);
-                Scalar rand_z = hoomd::NormalDistribution<Scalar>(sigma_r.z)(rng);
+                Scalar rand_x = m_legacy_rng
+                                    ? hoomd::NormalDistribution<Scalar>(sigma_r.x)(legacy_generator)
+                                    : hoomd::NormalDistribution<Scalar>(sigma_r.x)(rng);
+                Scalar rand_y = m_legacy_rng
+                                    ? hoomd::NormalDistribution<Scalar>(sigma_r.y)(legacy_generator)
+                                    : hoomd::NormalDistribution<Scalar>(sigma_r.y)(rng);
+                Scalar rand_z = m_legacy_rng
+                                    ? hoomd::NormalDistribution<Scalar>(sigma_r.z)(legacy_generator)
+                                    : hoomd::NormalDistribution<Scalar>(sigma_r.z)(rng);
 
                 // check for degenerate moment of inertia
                 bool x_zero, y_zero, z_zero;

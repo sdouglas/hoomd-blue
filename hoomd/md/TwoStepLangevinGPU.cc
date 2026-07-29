@@ -4,6 +4,7 @@
 #include "TwoStepLangevinGPU.h"
 #include "TwoStepLangevinGPU.cuh"
 #include "TwoStepNVEGPU.cuh"
+#include "hoomd/RandomNumbers.h"
 
 #ifdef ENABLE_MPI
 #include "hoomd/HOOMDMPI.h"
@@ -176,19 +177,22 @@ void TwoStepLangevinGPU::integrateStepTwo(uint64_t timestep)
         m_num_blocks = group_size / m_block_size + 1;
 
         // perform the update on the GPU
-        kernel::langevin_step_two_args args(d_gamma.data,
-                                            (unsigned int)m_gamma.getNumElements(),
-                                            m_T->operator()(timestep),
-                                            timestep,
-                                            m_sysdef->getSeed(),
-                                            d_sumBD.data,
-                                            d_partial_sumBD.data,
-                                            m_block_size,
-                                            m_num_blocks,
-                                            m_noiseless_t,
-                                            m_noiseless_r,
-                                            m_tally,
-                                            m_exec_conf->dev_prop);
+        kernel::langevin_step_two_args args(
+            d_gamma.data,
+            (unsigned int)m_gamma.getNumElements(),
+            m_T->operator()(timestep),
+            timestep,
+            m_sysdef->getSeed(),
+            LegacyRandomGenerator::hashUserSeed(m_sysdef->getSeed()),
+            d_sumBD.data,
+            d_partial_sumBD.data,
+            m_block_size,
+            m_num_blocks,
+            m_noiseless_t,
+            m_noiseless_r,
+            m_tally,
+            m_legacy_rng,
+            m_exec_conf->dev_prop);
 
         kernel::gpu_langevin_step_two(d_pos.data,
                                       d_vel.data,

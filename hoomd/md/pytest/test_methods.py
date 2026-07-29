@@ -76,7 +76,11 @@ _method_definitions = (
     ),
     MethodDefinition(
         hoomd.md.methods.Langevin,
-        {"kT": hoomd.variant.Variant, "tally_reservoir_energy": bool},
+        {
+            "kT": hoomd.variant.Variant,
+            "tally_reservoir_energy": bool,
+            "legacy_rng": bool,
+        },
         generator=generator,
     ),
     MethodDefinition(

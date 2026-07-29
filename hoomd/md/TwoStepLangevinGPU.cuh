@@ -26,6 +26,7 @@ struct langevin_step_two_args
                            Scalar _T,
                            uint64_t _timestep,
                            uint16_t _seed,
+                           uint32_t _legacy_seed,
                            Scalar* _d_sum_bdenergy,
                            Scalar* _d_partial_sum_bdenergy,
                            unsigned int _block_size,
@@ -33,11 +34,13 @@ struct langevin_step_two_args
                            bool _noiseless_t,
                            bool _noiseless_r,
                            bool _tally,
+                           bool _legacy_rng,
                            const hipDeviceProp_t& _devprop)
         : d_gamma(_d_gamma), n_types(_n_types), T(_T), timestep(_timestep), seed(_seed),
-          d_sum_bdenergy(_d_sum_bdenergy), d_partial_sum_bdenergy(_d_partial_sum_bdenergy),
-          block_size(_block_size), num_blocks(_num_blocks), noiseless_t(_noiseless_t),
-          noiseless_r(_noiseless_r), tally(_tally), devprop(_devprop)
+          legacy_seed(_legacy_seed), d_sum_bdenergy(_d_sum_bdenergy),
+          d_partial_sum_bdenergy(_d_partial_sum_bdenergy), block_size(_block_size),
+          num_blocks(_num_blocks), noiseless_t(_noiseless_t), noiseless_r(_noiseless_r),
+          tally(_tally), legacy_rng(_legacy_rng), devprop(_devprop)
         {
         }
 
@@ -46,6 +49,7 @@ struct langevin_step_two_args
     Scalar T;                       //!< Current temperature
     uint64_t timestep;              //!< Current timestep
     uint16_t seed;                  //!< User chosen random number seed
+    uint32_t legacy_seed;           //!< User seed transformed with the HOOMD 2.9.7 hash
     Scalar* d_sum_bdenergy;         //!< Energy transfer sum from bd thermal reservoir
     Scalar* d_partial_sum_bdenergy; //!< Array used for summation
     unsigned int block_size;        //!<  Block size
@@ -53,6 +57,7 @@ struct langevin_step_two_args
     bool noiseless_t; //!<  If set true, there will be no translational noise (random force)
     bool noiseless_r; //!<  If set true, there will be no rotational noise (random torque)
     bool tally;       //!< Set to true is bd thermal reservoir energy tally is to be performed
+    bool legacy_rng;  //!< Select the HOOMD 2.9.7 Philox key and counter layout
     const hipDeviceProp_t& devprop; //!< Device properties.
     };
 

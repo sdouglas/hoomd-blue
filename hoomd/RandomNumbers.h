@@ -240,6 +240,123 @@ DEVICE inline RandomGenerator::RandomGenerator(const Seed& seed, const Counter& 
     {
     }
 
+/** HOOMD 2.x-compatible Philox4x32-10 random number generator.
+
+    HOOMD 2.9.7 hashes the user seed, stores the 32-bit class identifier and
+    hashed seed in the two Philox key words, and constructs the counter as
+    ``{draw_index, 0, timestep, particle_tag}``. OpenRAND uses a different word
+    layout. This generator implements the legacy layout directly so selected
+    integration methods can reproduce a HOOMD 2.x stream without changing the
+    default HOOMD 7 stream.
+
+    The timestep truncation to 32 bits is intentional: HOOMD 2.9.7 accepted a
+    32-bit timestep in the corresponding integration method.
+ */
+class LegacyRandomGenerator
+    {
+    public:
+    /** Construct a legacy stream.
+
+        @param identifier HOOMD 2.x 32-bit RNG class identifier.
+        @param hashed_seed User seed after applying `hashUserSeed`.
+        @param particle_tag Global particle tag.
+        @param timestep Current timestep.
+     */
+    DEVICE inline LegacyRandomGenerator(uint32_t identifier,
+                                        uint32_t hashed_seed,
+                                        uint32_t particle_tag,
+                                        uint64_t timestep)
+        : m_key0(identifier), m_key1(hashed_seed), m_particle_tag(particle_tag),
+          m_timestep(static_cast<uint32_t>(timestep)), m_draw_index(0)
+        {
+        }
+
+    //! Apply the seed transformation used by HOOMD 2.9.7 Langevin methods.
+    DEVICE static inline uint32_t hashUserSeed(uint32_t seed)
+        {
+        seed = seed * uint32_t(0x12345677) + uint32_t(0x12345);
+        seed ^= seed >> 16;
+        seed *= uint32_t(0x45679);
+        return seed;
+        }
+
+    //! Generate a uniform random uint32_t.
+    DEVICE inline uint32_t generate_u32()
+        {
+        uint32_t output[4];
+        generate(output);
+        return output[0];
+        }
+
+    //! Generate a uniform random uint64_t.
+    DEVICE inline uint64_t generate_u64()
+        {
+        uint32_t output[4];
+        generate(output);
+        return (static_cast<uint64_t>(output[0]) << 32) | static_cast<uint64_t>(output[1]);
+        }
+
+    //! Generate two uniform random uint64_t values from one Philox block.
+    DEVICE inline void generate_2u64(uint64_t& out1, uint64_t& out2)
+        {
+        uint32_t output[4];
+        generate(output);
+        out1 = (static_cast<uint64_t>(output[0]) << 32) | static_cast<uint64_t>(output[1]);
+        out2 = (static_cast<uint64_t>(output[2]) << 32) | static_cast<uint64_t>(output[3]);
+        }
+
+    template<class Real> DEVICE inline Real generate_canonical()
+        {
+        return util::u01<Real>(generate_u64());
+        }
+
+    private:
+    DEVICE static inline uint32_t multiplyLow(uint32_t left, uint32_t right, uint32_t& high)
+        {
+        const uint64_t product = static_cast<uint64_t>(left) * static_cast<uint64_t>(right);
+        high = static_cast<uint32_t>(product >> 32);
+        return static_cast<uint32_t>(product);
+        }
+
+    DEVICE static inline void round(const uint32_t key[2], uint32_t counter[4])
+        {
+        uint32_t high0;
+        uint32_t high1;
+        const uint32_t low0 = multiplyLow(uint32_t(0xD2511F53), counter[0], high0);
+        const uint32_t low1 = multiplyLow(uint32_t(0xCD9E8D57), counter[2], high1);
+        counter[0] = high1 ^ counter[1] ^ key[0];
+        counter[1] = low1;
+        counter[2] = high0 ^ counter[3] ^ key[1];
+        counter[3] = low0;
+        }
+
+    DEVICE inline void generate(uint32_t output[4])
+        {
+        uint32_t key[2] = {m_key0, m_key1};
+        output[0] = m_draw_index;
+        output[1] = 0;
+        output[2] = m_timestep;
+        output[3] = m_particle_tag;
+
+        for (unsigned int iteration = 0; iteration < 10; ++iteration)
+            {
+            if (iteration > 0)
+                {
+                key[0] += uint32_t(0x9E3779B9);
+                key[1] += uint32_t(0xBB67AE85);
+                }
+            round(key, output);
+            }
+        ++m_draw_index;
+        }
+
+    const uint32_t m_key0;
+    const uint32_t m_key1;
+    const uint32_t m_particle_tag;
+    const uint32_t m_timestep;
+    uint32_t m_draw_index;
+    };
+
 namespace detail
     {
 //! Generate a random value in [2**(-65), 1]
@@ -249,6 +366,12 @@ namespace detail
     \post The state of the generator is advanced one step.
  */
 template<class Real> DEVICE inline Real generate_canonical(RandomGenerator& rng)
+    {
+    return rng.generate_canonical<Real>();
+    }
+
+//! Generate a legacy-compatible random value in [2**(-65), 1].
+template<class Real> DEVICE inline Real generate_canonical(LegacyRandomGenerator& rng)
     {
     return rng.generate_canonical<Real>();
     }

@@ -20,7 +20,7 @@ namespace md
 TwoStepLangevinBase::TwoStepLangevinBase(std::shared_ptr<SystemDefinition> sysdef,
                                          std::shared_ptr<ParticleGroup> group,
                                          std::shared_ptr<Variant> T)
-    : IntegrationMethodTwoStep(sysdef, group), m_T(T)
+    : IntegrationMethodTwoStep(sysdef, group), m_T(T), m_legacy_rng(false)
     {
     m_exec_conf->msg->notice(5) << "Constructing TwoStepLangevinBase" << endl;
 
@@ -115,7 +115,10 @@ void export_TwoStepLangevinBase(pybind11::module& m)
         .def("setGamma", &TwoStepLangevinBase::setGamma)
         .def("getGamma", &TwoStepLangevinBase::getGamma)
         .def("setGammaR", &TwoStepLangevinBase::setGammaR)
-        .def("getGammaR", &TwoStepLangevinBase::getGammaR);
+        .def("getGammaR", &TwoStepLangevinBase::getGammaR)
+        .def_property("legacy_rng",
+                      &TwoStepLangevinBase::getLegacyRNG,
+                      &TwoStepLangevinBase::setLegacyRNG);
     }
     } // end namespace detail
     } // end namespace md

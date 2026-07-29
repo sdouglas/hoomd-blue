@@ -74,4 +74,11 @@ struct RNGIdentifier
     static const uint8_t MeshDynamicBondUpdater = 49;
     };
 
+//! RNG identifiers retained for opt-in HOOMD 2.9.7 stream compatibility.
+struct LegacyRNGIdentifier
+    {
+    static const uint32_t TwoStepLangevin = 0x89abcdef;
+    static const uint32_t TwoStepLangevinAngular = 0x19fe31ab;
+    };
+
     } // namespace hoomd

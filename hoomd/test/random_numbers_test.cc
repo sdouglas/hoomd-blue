@@ -13,6 +13,31 @@ using namespace hoomd;
 
 HOOMD_UP_MAIN()
 
+//! Exact HOOMD 2.9.7 Philox word-layout compatibility vectors.
+UP_TEST(legacy_random_generator_exact_vector_test)
+    {
+    const uint32_t seed42 = hoomd::LegacyRandomGenerator::hashUserSeed(42);
+    UP_ASSERT_EQUAL(seed42, uint32_t(0x11b4517c));
+    hoomd::LegacyRandomGenerator rng(0x89abcdef, seed42, 0, 0);
+    UP_ASSERT_EQUAL(rng.generate_u64(), uint64_t(0x6842d9071033ba8f));
+    UP_ASSERT_EQUAL(rng.generate_u64(), uint64_t(0xd04f39d07dfea512));
+    UP_ASSERT_EQUAL(rng.generate_u64(), uint64_t(0x1bc812f1c6702fbc));
+
+    hoomd::LegacyRandomGenerator pair_rng(0x89abcdef, seed42, 0, 0);
+    uint64_t first;
+    uint64_t second;
+    pair_rng.generate_2u64(first, second);
+    UP_ASSERT_EQUAL(first, uint64_t(0x6842d9071033ba8f));
+    UP_ASSERT_EQUAL(second, uint64_t(0x06dc773ff1182305));
+
+    const uint32_t seed53 = hoomd::LegacyRandomGenerator::hashUserSeed(53);
+    UP_ASSERT_EQUAL(seed53, uint32_t(0xbdef2cc7));
+    hoomd::LegacyRandomGenerator nonzero_counter_rng(0x89abcdef, seed53, 17, 123456789);
+    nonzero_counter_rng.generate_2u64(first, second);
+    UP_ASSERT_EQUAL(first, uint64_t(0x96be7cd7adf63fbd));
+    UP_ASSERT_EQUAL(second, uint64_t(0x20098111d28e5d29));
+    }
+
 //! Test case for SpherePointGenerator
 /*!
  * When drawing uniformly on a sphere, the pdf should satisfy:

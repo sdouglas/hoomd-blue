@@ -59,8 +59,10 @@ __global__ void gpu_langevin_step_two_kernel(const Scalar4* d_pos,
                                              unsigned int n_types,
                                              uint64_t timestep,
                                              uint16_t seed,
+                                             uint32_t legacy_seed,
                                              Scalar T,
                                              bool noiseless_t,
+                                             bool legacy_rng,
                                              Scalar deltaT,
                                              unsigned int D,
                                              bool tally,
@@ -119,11 +121,15 @@ __global__ void gpu_langevin_step_two_kernel(const Scalar4* d_pos,
         // Initialize the Random Number Generator and generate the 3 random numbers
         RandomGenerator rng(hoomd::Seed(RNGIdentifier::TwoStepLangevin, timestep, seed),
                             hoomd::Counter(ptag));
+        LegacyRandomGenerator legacy_generator(LegacyRNGIdentifier::TwoStepLangevin,
+                                               legacy_seed,
+                                               ptag,
+                                               timestep);
         UniformDistribution<Scalar> uniform(-1, 1);
 
-        Scalar randomx = uniform(rng);
-        Scalar randomy = uniform(rng);
-        Scalar randomz = uniform(rng);
+        Scalar randomx = legacy_rng ? uniform(legacy_generator) : uniform(rng);
+        Scalar randomy = legacy_rng ? uniform(legacy_generator) : uniform(rng);
+        Scalar randomz = legacy_rng ? uniform(legacy_generator) : uniform(rng);
 
         bd_force.x = randomx * coeff - gamma * vel.x;
         bd_force.y = randomy * coeff - gamma * vel.y;
@@ -259,8 +265,10 @@ __global__ void gpu_langevin_angular_step_two_kernel(const Scalar4* d_pos,
                                                      unsigned int group_size,
                                                      uint64_t timestep,
                                                      uint16_t seed,
+                                                     uint32_t legacy_seed,
                                                      Scalar T,
                                                      bool noiseless_r,
+                                                     bool legacy_rng,
                                                      Scalar deltaT,
                                                      unsigned int D,
                                                      Scalar scale,
@@ -325,9 +333,16 @@ __global__ void gpu_langevin_angular_step_two_kernel(const Scalar4* d_pos,
 
             RandomGenerator rng(hoomd::Seed(RNGIdentifier::TwoStepLangevinAngular, timestep, seed),
                                 hoomd::Counter(ptag));
-            Scalar rand_x = NormalDistribution<Scalar>(sigma_r.x)(rng);
-            Scalar rand_y = NormalDistribution<Scalar>(sigma_r.y)(rng);
-            Scalar rand_z = NormalDistribution<Scalar>(sigma_r.z)(rng);
+            LegacyRandomGenerator legacy_generator(LegacyRNGIdentifier::TwoStepLangevinAngular,
+                                                   legacy_seed,
+                                                   ptag,
+                                                   timestep);
+            Scalar rand_x = legacy_rng ? NormalDistribution<Scalar>(sigma_r.x)(legacy_generator)
+                                       : NormalDistribution<Scalar>(sigma_r.x)(rng);
+            Scalar rand_y = legacy_rng ? NormalDistribution<Scalar>(sigma_r.y)(legacy_generator)
+                                       : NormalDistribution<Scalar>(sigma_r.y)(rng);
+            Scalar rand_z = legacy_rng ? NormalDistribution<Scalar>(sigma_r.z)(legacy_generator)
+                                       : NormalDistribution<Scalar>(sigma_r.z)(rng);
 
             // check for zero moment of inertia
             bool x_zero, y_zero, z_zero;
@@ -457,8 +472,10 @@ hipError_t gpu_langevin_angular_step_two(const Scalar4* d_pos,
                        group_size,
                        langevin_args.timestep,
                        langevin_args.seed,
+                       langevin_args.legacy_seed,
                        langevin_args.T,
                        langevin_args.noiseless_r,
+                       langevin_args.legacy_rng,
                        deltaT,
                        D,
                        scale,
@@ -525,8 +542,10 @@ hipError_t gpu_langevin_step_two(const Scalar4* d_pos,
                        langevin_args.n_types,
                        langevin_args.timestep,
                        langevin_args.seed,
+                       langevin_args.legacy_seed,
                        langevin_args.T,
                        langevin_args.noiseless_t,
+                       langevin_args.legacy_rng,
                        deltaT,
                        D,
                        langevin_args.tally,

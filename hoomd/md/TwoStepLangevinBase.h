@@ -64,6 +64,18 @@ class PYBIND11_EXPORT TwoStepLangevinBase : public IntegrationMethodTwoStep
     /// Gets gamma_r for a given particle type
     pybind11::tuple getGammaR(const std::string& type_name);
 
+    /// Select the HOOMD 2.9.7 Philox stream layout.
+    void setLegacyRNG(bool legacy_rng)
+        {
+        m_legacy_rng = legacy_rng;
+        }
+
+    /// Return whether the HOOMD 2.9.7 Philox stream layout is selected.
+    bool getLegacyRNG() const
+        {
+        return m_legacy_rng;
+        }
+
     //! Return true if the method is momentum conserving
     virtual bool isMomentumConserving() const
         {
@@ -79,6 +91,9 @@ class PYBIND11_EXPORT TwoStepLangevinBase : public IntegrationMethodTwoStep
 
     /// List of per type gamma_r (for 2D-only rotational noise) to use
     GPUVector<Scalar3> m_gamma_r;
+
+    /// True when the opt-in HOOMD 2.9.7 Philox stream is selected.
+    bool m_legacy_rng;
     };
 
     } // end namespace md

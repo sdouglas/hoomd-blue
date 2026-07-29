@@ -563,7 +563,10 @@ def test_rigid_resultant_refreshes_after_same_timestep_force_add(
         integrate_rotational_dof=True,
     )
     sim.operations.integrator = integrator
-    sim.run(1)
+    # Run long enough to consume initial attachment/sorting invalidations.
+    # A one-step history can cause the rigid force to refresh for an unrelated
+    # reason and masks the same-timestep cache behavior.
+    sim.run(100)
 
     constant_force = md.force.Constant(filter=hoomd.filter.Type(["B"]))
     constant_force.constant_force["B"] = (0, 1, 0)

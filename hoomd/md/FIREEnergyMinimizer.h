@@ -40,6 +40,29 @@ class PYBIND11_EXPORT FIREEnergyMinimizer : public IntegratorTwoStep
     //! Perform one minimization iteration
     virtual void update(uint64_t timestep);
 
+    //! Set the maximum timestep without overwriting FIRE's active adaptive timestep
+    void setDeltaTMax(Scalar deltaT)
+        {
+        m_deltaT_max = deltaT;
+        m_deltaT_set = deltaT / Scalar(10.0);
+        if (getDeltaT() > deltaT)
+            {
+            IntegratorTwoStep::setDeltaT(deltaT);
+            }
+        }
+
+    //! Return the configured maximum timestep
+    Scalar getDeltaTMax()
+        {
+        return m_deltaT_max;
+        }
+
+    //! Return the active adaptive timestep
+    Scalar getCurrentDeltaT()
+        {
+        return getDeltaT();
+        }
+
     //! Return whether or not the minimization has converged
     bool hasConverged() const
         {

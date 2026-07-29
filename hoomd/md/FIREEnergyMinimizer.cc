@@ -496,7 +496,11 @@ void export_FIREEnergyMinimizer(pybind11::module& m)
         .def_property("energy_tol", &FIREEnergyMinimizer::getEtol, &FIREEnergyMinimizer::setEtol)
         .def_property("min_steps_conv",
                       &FIREEnergyMinimizer::getMinSteps,
-                      &FIREEnergyMinimizer::setMinSteps);
+                      &FIREEnergyMinimizer::setMinSteps)
+        .def_property("dt",
+                      &FIREEnergyMinimizer::getDeltaTMax,
+                      &FIREEnergyMinimizer::setDeltaTMax)
+        .def_property_readonly("current_dt", &FIREEnergyMinimizer::getCurrentDeltaT);
     }
 
     } // end namespace detail

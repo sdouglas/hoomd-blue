@@ -104,6 +104,35 @@ def test_get_set_params(simulation_factory, two_particle_snapshot_factory):
     _assert_error_if_nonpositive(fire)
 
 
+def test_attachment_retains_conservative_starting_timestep(
+    simulation_factory, two_particle_snapshot_factory
+):
+    """FIRE starts at one tenth of the configured maximum timestep."""
+    snap = two_particle_snapshot_factory(d=2.34)
+    sim = simulation_factory(snap)
+    nve = md.methods.ConstantVolume(hoomd.filter.All())
+    fire = md.minimize.FIRE(
+        dt=0.01,
+        force_tol=1e-1,
+        angmom_tol=1e-1,
+        energy_tol=1e-5,
+        methods=[nve],
+    )
+    sim.operations.integrator = fire
+
+    sim.run(0)
+
+    assert fire.dt == pytest.approx(0.01)
+    assert fire.current_dt == pytest.approx(0.001)
+
+    fire.dt = 0.02
+    assert fire.dt == pytest.approx(0.02)
+    assert fire.current_dt == pytest.approx(0.001)
+
+    fire.reset()
+    assert fire.current_dt == pytest.approx(0.002)
+
+
 def test_run_minimization(lattice_snapshot_factory, simulation_factory):
     """Run a short minimization simulation."""
     snap = lattice_snapshot_factory(a=1.5, n=8)
@@ -188,6 +217,7 @@ def test_logging():
         ("md", "minimize", "fire"),
         {
             "converged": {"category": LoggerCategories.scalar, "default": False},
+            "current_dt": {"category": LoggerCategories.scalar, "default": False},
             "energy": {"category": LoggerCategories.scalar, "default": True},
         },
     )

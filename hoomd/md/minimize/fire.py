@@ -64,6 +64,10 @@ class FIRE(_DynamicIntegrator):
         min_steps_conv (int):
             A minimum number of attempts before convergence criteria are
             considered.
+        current_dt (float):
+            Read-only active adaptive timestep
+            :math:`[\\mathrm{time}]`. FIRE initializes this to ``dt / 10``
+            and changes it while minimizing.
 
     `FIRE` is a `hoomd.md.Integrator` that uses the Fast Inertial Relaxation
     Engine (FIRE) algorithm to minimize the potential energy for a group of
@@ -203,6 +207,9 @@ class FIRE(_DynamicIntegrator):
         min_steps_conv (int):
             A minimum number of attempts before convergence criteria are
             considered.
+        current_dt (float):
+            Read-only active adaptive timestep
+            :math:`[\\mathrm{time}]`.
 
     """
 
@@ -278,6 +285,13 @@ class FIRE(_DynamicIntegrator):
     def energy(self):
         """float: Get the energy after the last iteration of the minimizer."""
         return self._cpp_obj.energy
+
+    @log(default=False)
+    def current_dt(self):
+        """float: Active adaptive timestep."""
+        if not self._attached:
+            return self.dt / 10
+        return self._cpp_obj.current_dt
 
     @log(default=False)
     def converged(self):

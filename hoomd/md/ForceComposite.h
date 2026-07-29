@@ -98,6 +98,12 @@ class PYBIND11_EXPORT ForceComposite : public MolecularForceCompute
     /// positions or orientation.
     virtual void validateRigidBodies();
 
+    /// Recompute rigid body force and torque resultants on the next compute call.
+    void requestForceRecompute()
+        {
+        m_force_compute = true;
+        }
+
     //! Create rigid body constituent particles
     void pyCreateRigidBodies(pybind11::dict charges, pybind11::dict masses);
 

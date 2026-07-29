@@ -251,6 +251,14 @@ void IntegratorTwoStep::prepRun(uint64_t timestep)
         updateRigidBodies(timestep);
         }
 
+    // Constituent forces may have changed since a preceding run at this same
+    // timestep. Recompute the rigid body resultants after the regular forces
+    // are summed below.
+    if (m_rigid_bodies)
+        {
+        m_rigid_bodies->requestForceRecompute();
+        }
+
     // compute the net force on all particles
 #ifdef ENABLE_HIP
     if (m_exec_conf->isCUDAEnabled())

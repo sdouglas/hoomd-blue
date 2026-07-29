@@ -568,6 +568,12 @@ def test_rigid_resultant_refreshes_after_same_timestep_force_add(
     constant_force = md.force.Constant(filter=hoomd.filter.Type(["B"]))
     constant_force.constant_force["B"] = (0, 1, 0)
     integrator.forces.append(constant_force)
+
+    # Match applications that inspect a newly attached force before starting
+    # the next run. This computes the constituent force at the current
+    # timestep while the rigid resultant from the preceding force field is
+    # still cached.
+    np.testing.assert_allclose(constant_force.forces[1], (0, 1, 0))
     sim.run(0)
 
     with sim.state.cpu_local_snapshot as local:

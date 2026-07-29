@@ -106,16 +106,19 @@ void System::run(uint64_t nsteps, bool write_at_start)
         m_update_group_dof_next_step = false;
         }
 
+    // Preset the flags before prepRun so that force computes see the data
+    // requirements for this run while preparing the initial net force and
+    // torque. This is also the ordering used in HOOMD 2.9.7. Setting the
+    // flags afterward delays a flag change until the first integrated step,
+    // so a same-timestep force transition can use stale rigid-body torque in
+    // the first rotational half-step.
+    m_sysdef->getParticleData()->setFlags(determineFlags(m_cur_tstep));
+
     // Prepare the run
     if (m_integrator)
         {
         m_integrator->prepRun(m_cur_tstep);
         }
-
-    // preset the flags before the run loop so that any analyzers/updaters run on step 0 have the
-    // info they need but set the flags before prepRun, as prepRun may remove some flags that it
-    // cannot generate on the first step
-    m_sysdef->getParticleData()->setFlags(determineFlags(m_cur_tstep));
 
     // execute analyzers on initial step if requested
     if (write_at_start)

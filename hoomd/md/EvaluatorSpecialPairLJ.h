@@ -36,6 +36,7 @@ struct special_lj_params
     {
     Scalar sigma_6;
     Scalar epsilon_x_4;
+    Scalar alpha;
     Scalar r_cutsq;
 
 #ifdef ENABLE_HIP
@@ -47,7 +48,7 @@ struct special_lj_params
 #endif
 
 #ifndef __HIPCC__
-    special_lj_params() : sigma_6(0.), epsilon_x_4(0.), r_cutsq(0.) { }
+    special_lj_params() : sigma_6(0.), epsilon_x_4(0.), alpha(1.), r_cutsq(0.) { }
 
     special_lj_params(pybind11::dict v)
         {
@@ -55,6 +56,7 @@ struct special_lj_params
         auto epsilon(v["epsilon"].cast<Scalar>());
         sigma_6 = sigma * sigma * sigma * sigma * sigma * sigma;
         epsilon_x_4 = Scalar(4.0) * epsilon;
+        alpha = v["alpha"].cast<Scalar>();
 
         // r_cutsq is set later in PotentialSpecialPair<evaluator>::setRCut
         r_cutsq = 0.;
@@ -65,6 +67,7 @@ struct special_lj_params
         pybind11::dict v;
         v["sigma"] = pow(sigma_6, 1. / 6.);
         v["epsilon"] = epsilon_x_4 / 4.0;
+        v["alpha"] = alpha;
         return v;
         }
 #endif
@@ -90,7 +93,8 @@ class EvaluatorSpecialPairLJ
     */
     DEVICE EvaluatorSpecialPairLJ(Scalar _rsq, const param_type& _params)
         : rsq(_rsq), lj1(_params.epsilon_x_4 * _params.sigma_6 * _params.sigma_6),
-          lj2(_params.epsilon_x_4 * _params.sigma_6), rcutsq(_params.r_cutsq)
+          lj2(_params.alpha * _params.epsilon_x_4 * _params.sigma_6),
+          rcutsq(_params.r_cutsq)
         {
         }
 

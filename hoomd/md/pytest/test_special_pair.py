@@ -28,6 +28,13 @@ special_pair_test_parameters = [
         4 * 1.5 * ((0.5 / R) ** 12 - (0.5 / R) ** 6),
     ),
     (
+        hoomd.md.special_pair.LJ,
+        dict(epsilon=1.5, sigma=0.5, alpha=0.0),
+        2.5,
+        -48 * 1.5 * 0.5**12 / R**13,
+        4 * 1.5 * (0.5 / R) ** 12,
+    ),
+    (
         hoomd.md.special_pair.Coulomb,
         dict(alpha=1.5),
         2.5,

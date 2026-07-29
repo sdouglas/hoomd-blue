@@ -87,7 +87,7 @@ class LJ(SpecialPair):
         \begin{cases}
          4 \varepsilon
             \left[ \left( \frac{\sigma}{r} \right)^{12} -
-                   \left( \frac{\sigma}{r} \right)^{6} \right]
+                   \alpha \left( \frac{\sigma}{r} \right)^{6} \right]
                               & r < r_{\mathrm{cut}} \\
          0 & r \ge r_{\mathrm{cut}} \\
         \end{cases}
@@ -120,6 +120,9 @@ class LJ(SpecialPair):
             * ``sigma`` (`float`, **required**) - particle size
               :math:`[\mathrm{length}]`
 
+            * ``alpha`` (`float`, optional) - attractive-term scale
+              :math:`[\mathrm{dimensionless}]`. Defaults to 1.
+
         r_cut (TypeParameter[``special pair type``, float]):
             The cut-off distance for special pair potential
             :math:`[\mathrm{length}]`
@@ -136,7 +139,9 @@ class LJ(SpecialPair):
         params = TypeParameter(
             "params",
             "special_pair_types",
-            TypeParameterDict(epsilon=float, sigma=float, len_keys=1),
+            TypeParameterDict(
+                epsilon=float, sigma=float, alpha=1.0, len_keys=1
+            ),
         )
         r_cut = TypeParameter(
             "r_cut", "special_pair_types", TypeParameterDict(float, len_keys=1)

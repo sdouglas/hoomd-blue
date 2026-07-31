@@ -321,6 +321,45 @@ void dihedral_force_basic_tests(dihedralforce_creator tf_creator,
                            + h_virial_3.data[5 * pitch + 3],
                        tol);
         }
+
+    // phi=+pi lies exactly on the last table point. This must use the final
+    // valid interpolation segment, not read table[width].
+    pdata_4->setPosition(0, make_scalar3(0.0, 1.0, 0.0));
+    pdata_4->setPosition(1, make_scalar3(0.0, 0.0, 0.0));
+    pdata_4->setPosition(2, make_scalar3(1.0, 0.0, 0.0));
+    pdata_4->setPosition(3, make_scalar3(1.0, -1.0, 0.0));
+    fc_4->compute(4);
+        {
+        const GPUArray<Scalar4>& force = fc_4->getForceArray();
+        ArrayHandle<Scalar4> h_force(force, access_location::host, access_mode::read);
+        for (unsigned int i = 0; i < 4; ++i)
+            {
+            UP_ASSERT(std::isfinite(h_force.data[i].x));
+            UP_ASSERT(std::isfinite(h_force.data[i].y));
+            UP_ASSERT(std::isfinite(h_force.data[i].z));
+            UP_ASSERT(std::isfinite(h_force.data[i].w));
+            }
+        }
+
+    // A perfectly straight four-particle chain has undefined torsion. The
+    // regularized force must remain finite so other interactions can move the
+    // system away from this measure-zero geometry.
+    pdata_4->setPosition(0, make_scalar3(-0.75, 0.0, 0.0));
+    pdata_4->setPosition(1, make_scalar3(-0.25, 0.0, 0.0));
+    pdata_4->setPosition(2, make_scalar3(0.25, 0.0, 0.0));
+    pdata_4->setPosition(3, make_scalar3(0.75, 0.0, 0.0));
+    fc_4->compute(5);
+        {
+        const GPUArray<Scalar4>& force = fc_4->getForceArray();
+        ArrayHandle<Scalar4> h_force(force, access_location::host, access_mode::read);
+        for (unsigned int i = 0; i < 4; ++i)
+            {
+            UP_ASSERT(std::isfinite(h_force.data[i].x));
+            UP_ASSERT(std::isfinite(h_force.data[i].y));
+            UP_ASSERT(std::isfinite(h_force.data[i].z));
+            UP_ASSERT(std::isfinite(h_force.data[i].w));
+            }
+        }
     }
 
 #if 0

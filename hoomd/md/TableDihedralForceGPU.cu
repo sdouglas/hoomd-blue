@@ -55,6 +55,7 @@ __global__ void gpu_compute_table_dihedral_forces_kernel(Scalar4* d_force,
                                                          const unsigned int pitch,
                                                          const unsigned int* n_dihedrals_list,
                                                          const Scalar2* d_tables,
+                                                         const unsigned int table_width,
                                                          const Index2D table_value,
                                                          const Scalar delta_phi)
     {
@@ -161,6 +162,10 @@ __global__ void gpu_compute_table_dihedral_forces_kernel(Scalar4* d_force,
         Scalar b3mag2 = ddc.x * ddc.x + ddc.y * ddc.y + ddc.z * ddc.z;
         Scalar b3mag = fast::sqrt(b3mag2);
 
+        const Scalar min_bond_sq = Scalar(SMALL) * Scalar(SMALL);
+        if (b1mag2 < min_bond_sq || b2mag2 < min_bond_sq || b3mag2 < min_bond_sq)
+            continue;
+
         Scalar ctmp = dab.x * dcb.x + dab.y * dcb.y + dab.z * dcb.z;
         Scalar r12c1 = Scalar(1.0) / (b1mag * b2mag);
         Scalar c1mag = ctmp * r12c1;
@@ -211,7 +216,25 @@ __global__ void gpu_compute_table_dihedral_forces_kernel(Scalar4* d_force,
         Scalar value_f = (Scalar(M_PI) + phi) / delta_phi;
 
         // compute index into the table and read in values
-        unsigned int value_i = value_f;
+        if (!(value_f == value_f))
+            value_f = Scalar(0.0);
+        unsigned int value_i;
+        Scalar f;
+        if (value_f <= Scalar(0.0))
+            {
+            value_i = 0;
+            f = Scalar(0.0);
+            }
+        else if (value_f >= Scalar(table_width - 1))
+            {
+            value_i = table_width - 2;
+            f = Scalar(1.0);
+            }
+        else
+            {
+            value_i = (unsigned int)value_f;
+            f = value_f - Scalar(value_i);
+            }
         Scalar2 VT0 = __ldg(d_tables + table_value(value_i, cur_dihedral_type));
         Scalar2 VT1 = __ldg(d_tables + table_value(value_i + 1, cur_dihedral_type));
         // unpack the data
@@ -219,9 +242,6 @@ __global__ void gpu_compute_table_dihedral_forces_kernel(Scalar4* d_force,
         Scalar V1 = VT1.x;
         Scalar T0 = VT0.y;
         Scalar T1 = VT1.y;
-
-        // compute the linear interpolation coefficient
-        Scalar f = value_f - Scalar(value_i);
 
         // interpolate to get V and T;
         Scalar V = V0 + f * (V1 - V0);
@@ -233,6 +253,12 @@ __global__ void gpu_compute_table_dihedral_forces_kernel(Scalar4* d_force,
 
         vec3<Scalar> B = cross(vec3<Scalar>(ddc), vec3<Scalar>(dcbm));
         Scalar Bsq = dot(B, B);
+
+        const Scalar min_normal_sq = Scalar(SMALL) * Scalar(SMALL);
+        if (Asq < min_normal_sq)
+            Asq = min_normal_sq;
+        if (Bsq < min_normal_sq)
+            Bsq = min_normal_sq;
 
         Scalar3 f_a = -T * vec_to_scalar3(b2mag / Asq * A);
         Scalar3 f_b
@@ -365,6 +391,7 @@ hipError_t gpu_compute_table_dihedral_forces(Scalar4* d_force,
                        pitch,
                        n_dihedrals_list,
                        d_tables,
+                       table_width,
                        table_value,
                        delta_phi);
 

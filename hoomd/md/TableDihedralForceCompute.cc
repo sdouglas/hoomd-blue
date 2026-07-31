@@ -33,9 +33,9 @@ TableDihedralForceCompute::TableDihedralForceCompute(std::shared_ptr<SystemDefin
     // access the dihedral data for later use
     m_dihedral_data = m_sysdef->getDihedralData();
 
-    if (table_width == 0)
+    if (table_width < 2)
         {
-        throw runtime_error("Dihedral table must have width greater than 0.");
+        throw runtime_error("Dihedral table must have width of at least 2.");
         }
 
     // allocate storage for the tables and parameters
@@ -234,6 +234,13 @@ void TableDihedralForceCompute::computeForces(uint64_t timestep)
         Scalar b3mag2 = ddc.x * ddc.x + ddc.y * ddc.y + ddc.z * ddc.z;
         Scalar b3mag = fast::sqrt(b3mag2);
 
+        // A dihedral is undefined when a bond has zero length. Leave this
+        // interaction at zero rather than generating a NaN that is later
+        // converted into an arbitrary table index.
+        const Scalar min_bond_sq = Scalar(SMALL) * Scalar(SMALL);
+        if (b1mag2 < min_bond_sq || b2mag2 < min_bond_sq || b3mag2 < min_bond_sq)
+            continue;
+
         Scalar ctmp = dab.x * dcb.x + dab.y * dcb.y + dab.z * dcb.z;
         Scalar r12c1 = 1.0 / (b1mag * b2mag);
         Scalar c1mag = ctmp * r12c1;
@@ -286,7 +293,27 @@ void TableDihedralForceCompute::computeForces(uint64_t timestep)
 
         /// Here we use the table!!
         unsigned int dihedral_type = m_dihedral_data->getTypeByIndex(i);
-        unsigned int value_i = (unsigned int)value_f;
+        if (!(value_f == value_f))
+            value_f = Scalar(0.0);
+        unsigned int value_i;
+        Scalar f;
+        if (value_f <= Scalar(0.0))
+            {
+            value_i = 0;
+            f = Scalar(0.0);
+            }
+        else if (value_f >= Scalar(m_table_width - 1))
+            {
+            // phi=+pi is the last table point. Interpolate from the final
+            // valid segment instead of reading one element past the table.
+            value_i = m_table_width - 2;
+            f = Scalar(1.0);
+            }
+        else
+            {
+            value_i = (unsigned int)value_f;
+            f = value_f - Scalar(value_i);
+            }
         Scalar2 VT0 = h_tables.data[m_table_value(value_i, dihedral_type)];
         Scalar2 VT1 = h_tables.data[m_table_value(value_i + 1, dihedral_type)];
         // unpack the data
@@ -294,9 +321,6 @@ void TableDihedralForceCompute::computeForces(uint64_t timestep)
         Scalar V1 = VT1.x;
         Scalar T0 = VT0.y;
         Scalar T1 = VT1.y;
-
-        // compute the linear interpolation coefficient
-        Scalar f = value_f - Scalar(value_i);
 
         // interpolate to get V and T;
         Scalar V = V0 + f * (V1 - V0);
@@ -308,6 +332,15 @@ void TableDihedralForceCompute::computeForces(uint64_t timestep)
 
         vec3<Scalar> B = cross(vec3<Scalar>(ddc), vec3<Scalar>(dcbm));
         Scalar Bsq = dot(B, B);
+
+        // Match the existing SMALL regularization of sin(theta). Exact
+        // collinearity then contributes finite zero force and can be perturbed
+        // away by the remaining interactions instead of poisoning the state.
+        const Scalar min_normal_sq = Scalar(SMALL) * Scalar(SMALL);
+        if (Asq < min_normal_sq)
+            Asq = min_normal_sq;
+        if (Bsq < min_normal_sq)
+            Bsq = min_normal_sq;
 
         Scalar3 f_a = -T * vec_to_scalar3(b2mag / Asq * A);
         Scalar3 f_b
